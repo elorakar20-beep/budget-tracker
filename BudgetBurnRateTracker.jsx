@@ -51,36 +51,8 @@ export default function BudgetBurnRateTracker() {
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   // LLM API Config State
-  const [apiKey, setApiKey] = useState(() => {
-    // Attempt to load from standard bundler environment variables (if deployed via Vite, Create React App, etc.)
-    if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY) {
-      return process.env.REACT_APP_GEMINI_API_KEY;
-    }
-    // Attempt Vite specific env
-    try { if (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) return import.meta.env.VITE_GEMINI_API_KEY; } catch(e) {}
-    // Attempt static window injection
-    if (window.__ENV__ && window.__ENV__.GEMINI_API_KEY) return window.__ENV__.GEMINI_API_KEY;
-    return '';
-  });
-  
   const [aiInsight, setAiInsight] = useState(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
-
-  useEffect(() => {
-    if (apiKey) return; // If loaded from build-time ENV variables, skip the local .env file fetch
-    
-    fetch('/.env?t=' + Date.now())
-      .then(res => res.text())
-      .then(text => {
-        const lines = text.split('\n');
-        for (let line of lines) {
-          if (line.startsWith('GEMINI_API_KEY=')) {
-            setApiKey(line.replace('GEMINI_API_KEY=', '').trim());
-          }
-        }
-      })
-      .catch((err) => console.log('No .env found or failed to load.'));
-  }, []);
 
   useEffect(() => {
     if (budget !== null) {
@@ -246,11 +218,6 @@ export default function BudgetBurnRateTracker() {
   };
 
   const handleGetInsight = async () => {
-    if (!apiKey || apiKey === 'YOUR_GOOGLE_AI_API_KEY_HERE') {
-      setAlertMsg("Unable to authenticate request.");
-      return;
-    }
-    
     setIsAiLoading(true);
     setAiInsight("Analyzing spending trajectory...");
     
@@ -264,20 +231,20 @@ export default function BudgetBurnRateTracker() {
     `;
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      // Securely offload the Gemini API call to our Vercel Serverless Function backend
+      // This mathematically guarantees the API key is never exposed to the client browser!
+      const response = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }]
-        })
+        body: JSON.stringify({ prompt: promptText })
       });
-      const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
       
-      const insight = data.candidates?.[0]?.content?.parts?.[0]?.text || "Unable to generate insights at the moment.";
-      setAiInsight("🤖 " + insight.trim());
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unknown Server Error');
+      
+      setAiInsight("🤖 " + data.text);
     } catch (e) {
-      setAiInsight("❌ Error reaching Google AI Studio: " + e.message);
+      setAiInsight("❌ Error reaching Vercel Backend: " + e.message);
     }
     setIsAiLoading(false);
   };
