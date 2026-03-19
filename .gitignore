@@ -1,0 +1,19 @@
+# Environment Variables (Keep API keys out of source control!)
+.env
+.env.local
+.env.development
+.env.production
+
+# Dependencies (if you ever convert this to a Node/Vite app)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db

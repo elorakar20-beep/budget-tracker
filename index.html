@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget Burn Rate Tracker</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel for transpiling JSX on the fly -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-[#0f0f0f] text-white">
+  <div id="root"></div>
+
+  <!-- Setup script to fetch, compile, and render our standalone JSX file -->
+  <script type="text/babel" data-type="module">
+    // Expose React hooks globally so the eval'd component can find them
+    window.useState = React.useState;
+    window.useEffect = React.useEffect;
+    
+    // Fetch the component code
+    fetch('./BudgetBurnRateTracker.jsx')
+      .then(response => response.text())
+      .then(code => {
+        // Strip out the ES6 import/export statements since standalone Babel handles this differently
+        let runnableCode = code
+          .replace(/import .* from 'react';/, '')
+          .replace(/export default function BudgetBurnRateTracker/, 'function BudgetBurnRateTracker');
+          
+        // Append the React render code at the bottom
+        runnableCode += '\n\nconst root = ReactDOM.createRoot(document.getElementById("root"));';
+        runnableCode += '\nroot.render(<BudgetBurnRateTracker />);';
+        
+        // Transform the JSX and evaluate
+        const transformed = Babel.transform(runnableCode, { presets: ['env', 'react'] }).code;
+        eval(transformed);
+      })
+      .catch(err => {
+        document.getElementById("root").innerHTML = "Error loading component: " + err;
+        console.error(err);
+      });
+  </script>
+</body>
+</html>
